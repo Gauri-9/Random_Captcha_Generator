@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced 3D Captcha Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+            width: 350px;
+            position: relative;
+        }
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        #captcha-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+            height: 120px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #eee;
+        }
+        #captcha-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: #007BFF;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .cancel-icon {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            cursor: pointer;
+            color: #d9534f;
+            font-size: 20px;
+        }
+        .reload-icon {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            cursor: pointer;
+            color: #007BFF;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <i class="bi bi-arrow-clockwise reload-icon" onclick="reloadCaptcha()"></i>
+        <i class="bi bi-x-circle cancel-icon" onclick="clearCaptcha()"></i>
+        <input type="text" id="captchafeild" placeholder="Enter Captcha">
+        <div id="captcha-container">
+            <canvas id="captcha-canvas"></canvas>
+        </div>
+        <button id="verify">Verify</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            generate3DCaptcha();
+
+            $('#verify').click(function(e) {
+                e.preventDefault();
+                let captfeild = $('#captchafeild').val();
+                if (captfeild === ctext) {
+                    alert("Captcha Verified Successfully!");
+                    $('#captchafeild').val(""); 
+                } else {
+                    alert("Captcha Verification Failed. Try Again.");
+                    generate3DCaptcha();
+                    $('#captchafeild').val("");
+                }
+            });
+        });
+
+
+
+        let ctext = "";
+        let scene, camera, renderer, textMesh;
+        let rotationCompleted = false;
+
+        function generate3DCaptcha() {
+            let clen = 6;
+            ctext = "";
+            let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+            for (let i = 1; i <= clen; i++) {
+                ctext += chars[Math.floor(Math.random() * chars.length)];
+            }
+
+            if (scene) {
+                scene.remove(textMesh);
+            } else {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, document.getElementById('captcha-canvas').clientWidth / document.getElementById('captcha-canvas').clientHeight, 0.1, 1000);
+                renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('captcha-canvas'), antialias: true, alpha: true });
+                renderer.setClearColor( 0xffffff, 0 );
+                renderer.setSize(document.getElementById('captcha-canvas').clientWidth, document.getElementById('captcha-canvas').clientHeight);
+                camera.position.z = 5;
+            }
+
+            const loader = new THREE.FontLoader();
+            loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+                const textGeometry = new THREE.TextGeometry(ctext, {
+                    font: font,
+                    size: 0.8,
+                    height: 0.2,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.03,
+                    bevelSize: 0.02,
+                    bevelOffset: 0,
+                    bevelSegments: 5
+                });
+                const textMaterial = new THREE.MeshNormalMaterial();
+                textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                textGeometry.center();
+                scene.add(textMesh);
+
+                let rotationAngleX = 0;
+                let rotationAngleY = 0;
+                const targetRotation = Math.PI * 2;
+                const rotationSpeed = 0.03;
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    if (!rotationCompleted) {
+                        rotationAngleX += rotationSpeed;
+                        rotationAngleY += rotationSpeed;
+                        textMesh.rotation.x = rotationAngleX;
+                        textMesh.rotation.y = rotationAngleY;
+
+                        if (rotationAngleX >= targetRotation && rotationAngleY >= targetRotation) {
+                            rotationCompleted = true;
+                        }
+                    }
+                    renderer.render(scene, camera);
+                }
+                rotationCompleted = false;
+                rotationAngleX = 0;
+                rotationAngleY = 0;
+                animate();
+            });
+        }
+
+        function clearCaptcha() {
+            $('#captchafeild').val("");
+        }
+        function reloadCaptcha(){
+            generate3DCaptcha();
+            $('#captchafeild').val("");
+        }
+    </script>
+
+</body>
+</html>
